@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VP Peter House, Sunny Beach - Apartment Rental</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+        
+        :root {
+            --primary-color: #1a1a1a;
+            --accent-color: #c19a6b;
+            --light-bg: #f8f5f0;
+            --dark-text: #2c2c2c;
+            --light-text: #f8f8f8;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #fff;
+            color: var(--dark-text);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        
+        h1, h2, h3, h4, .section-title {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .calendar-day {
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+        .calendar-day:hover:not(.booked):not(.disabled) {
+            background-color: #e5e7eb; 
+        }
+        .calendar-day.selected {
+            background-color: #2563eb; 
+            color: white;
+            transform: scale(1.05);
+            border-radius: 0.375rem; 
+        }
+        .calendar-day.booked {
+            background-color: #f87171; 
+            color: #fef2f2; 
+            cursor: not-allowed;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+        .calendar-day.disabled {
+            color: #9ca3af; 
+            cursor: not-allowed;
+        }
+        .calendar-day.today {
+            border: 2px solid #1d4ed8; 
+            font-weight: bold;
+        }
+        
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #ffffff; margin: 10% auto; padding: 24px; border: 1px solid #e5e7eb;
+            width: 90%; max-width: 550px; 
+            border-radius: 0.5rem; text-align: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        .modal-close-button {
+            background-color: #2563eb; color: white; padding: 10px 18px; border-radius: 0.375rem;
+            cursor: pointer; margin-top: 20px; font-weight: 500; transition: background-color 0.3s ease;
+        }
+        .modal-close-button:hover { background-color: #1d4ed8; }
+        .contact-info-modal {
+            margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: left;
+        }
+        .contact-info-modal p { margin-bottom: 4px; color: #4b5563; }
+        .contact-info-modal strong { color: #1f2937; }
+
+        .gallery-image {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            border-radius: 8px;
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .gallery-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            transition: var(--transition);
+            z-index: 1;
+        }
+        .gallery-image:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        .gallery-image:hover::before {
+            opacity: 1;
+        }
+        .page-view { display: none; }
+        .page-view.active { display: block; }
+
+        .hero-section {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            min-height: 700px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+        }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 100%);
+            z-index: 1;
+        }
+        .hero-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            transition: transform 10s ease;
+        }
+        .hero-section:hover .hero-image {
+            transform: scale(1.05);
+        }
+        .hero-content-overlay {
+            position: relative;
+            z-index: 2;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        .hero-title {
+            font-size: 4.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+            line-height: 1.1;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s ease forwards;
+        }
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+            font-weight: 300;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s ease 0.2s forwards;
+        }
+        .hero-button {
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: 500;
+            padding: 1.2rem 3rem;
+            border-radius: 50px;
+            transition: var(--transition);
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s ease 0.4s forwards;
+            box-shadow: 0 10px 30px rgba(193, 154, 107, 0.3);
+        }
+        .hero-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background-color: rgba(255,255,255,0.1);
+            transition: all 0.5s ease;
+            z-index: -1;
+        }
+        .hero-button:hover::before {
+            width: 100%;
+        }
+        .hero-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(193, 154, 107, 0.4);
+        }
+
+        .about-section {
+            background-color: #ffffff;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.05);
+            border-radius: 10px;
+            padding: 4rem 3rem;
+        }
+        .about-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--accent-color);
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--dark-text);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.8rem 1.2rem;
+            background: rgba(193, 154, 107, 0.05);
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+        .feature-item:hover {
+            transform: translateX(10px);
+            background: rgba(193, 154, 107, 0.1);
+        }
+        .feature-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            color: var(--accent-color);
+            flex-shrink: 0;
+        }
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--dark-text);
+            margin-bottom: 3rem;
+            position: relative;
+            display: inline-block;
+            padding-bottom: 1rem;
+        }
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--accent-color);
+        }
+        .admin-view-section {
+            background-color: #f9f7f4;
+            position: relative;
+            padding: 6rem 0;
+        }
+        .admin-view-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/white-diamond.png');
+            opacity: 0.5;
+            z-index: 0;
+        }
+
+        /* Lightbox Modal Styles */
+        .lightbox-modal {
+            display: none; position: fixed; z-index: 1050; 
+            left: 0; top: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: rgba(0,0,0,0.85); 
+            justify-content: center; align-items: center;
+        }
+        .lightbox-modal.active { display: flex; }
+        .lightbox-content {
+            position: relative; background-color: transparent; 
+            padding: 0; margin: auto;
+            max-width: 90vw; max-height: 90vh;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .lightbox-image {
+            max-width: 100%; max-height: 100%;
+            object-fit: contain; border-radius: 0.5rem;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        .lightbox-close-button {
+            position: absolute; top: 20px; right: 30px;
+            font-size: 2.5rem; font-weight: bold; color: #fff;
+            cursor: pointer; transition: color 0.3s ease;
+            background: none; border: none; padding: 0;
+            line-height: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+        }
+        .lightbox-close-button:hover { color: #e5e7eb; }
+        .lightbox-nav {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            font-size: 3rem; font-weight: bold; color: rgba(255,255,255,0.7);
+            cursor: pointer; transition: color 0.3s ease;
+            background-color: rgba(0,0,0,0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            user-select: none; 
+        }
+        .lightbox-nav:hover { color: #fff; background-color: rgba(0,0,0,0.5); }
+        .lightbox-prev { left: 20px; }
+        .lightbox-next { right: 20px; }
+        .lightbox-nav.disabled {
+            color: rgba(255,255,255,0.2);
+            cursor: default;
+            background-color: rgba(0,0,0,0.1);
+        }
+
+            /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 3rem;
+            }
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            .hero-button {
+                padding: 1rem 2rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="mx-auto"> 
+
+        <div id="apartmentView" class="page-view active">
+            <div class="hero-section shadow-2xl"> 
+                <img src="images/cleaned/apartment-main.jpg"
+                     onerror="this.onerror=null;this.src='https://placehold.co/1200x800/cccccc/ffffff?text=Image+Not+Available';"
+                     alt="VP Peter House Apartment" class="w-full h-96 object-cover">
+                <div class="hero-content-overlay">
+                    <h1 id="apartmentNameHeader" class="hero-title">VP Peter House, Sunny Beach</h1>
+                    <p class="hero-subtitle">Your beachfront aparthotel experience with stunning city views!</p>
+                    <button id="goToBookingBtnHero" class="hero-button">
+                        Book Your Stay Now
+                    </button>
+                </div>
+            </div>
+            
+            <div class="py-12 px-4 sm:px-6 lg:px-8"> 
+                <div class="about-section p-6 md:p-10 rounded-xl shadow-xl mb-12">
+                    <h2 class="section-title">About the Aparthotel</h2>
+                    <div class="grid md:grid-cols-5 gap-8 mt-6">
+                        <div class="md:col-span-3">
+                            <h3 class="text-xl font-semibold text-gray-700 mb-3">Welcome to Your Perfect Getaway</h3>
+                            <p id="apartmentDescription" class="text-gray-600 leading-relaxed text-justify">
+                            </p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <h3 class="text-xl font-semibold text-gray-700 mb-3">Key Features & Amenities:</h3>
+                            <ul id="apartmentFeatures" class="space-y-2.5"> 
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 md:p-10 rounded-xl shadow-xl mb-12">
+                    <h2 class="section-title">Photo Gallery</h2>
+                    <div id="photoGalleryGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                        <img src="images/cleaned/apartment-view-1.jpeg" alt="Apartment View 1" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-2.jpeg" alt="Apartment View 2" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-3.jpeg" alt="Apartment View 3" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-4.jpeg" alt="Apartment View 4" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-5.jpeg" alt="Apartment View 5" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-6.jpeg" alt="Apartment View 6" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-7.jpeg" alt="Apartment View 7" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-8.jpeg" alt="Apartment View 8" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-9.jpeg" alt="Apartment View 9" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-10.jpeg" alt="Apartment View 10" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-11.jpeg" alt="Apartment View 11" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                        <img src="images/cleaned/apartment-view-12.jpeg" alt="Apartment View 12" class="gallery-image" onerror="this.onerror=null;this.src='https://placehold.co/300x200/cccccc/ffffff?text=Gallery+Image';">
+                    </div>
+                </div>
+                
+                <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                    <p class="text-sm text-blue-700">Your User ID (for reference): <span id="userIdDisplayApartmentView" class="font-semibold">Loading...</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="bookingView" class="page-view">
+             <header class="text-center py-8 px-4"> 
+                <button id="backToDetailsBtn" class="absolute top-6 left-6 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors shadow-sm">&lt; Back</button>
+                <h1 class="text-4xl font-bold text-gray-800">Book Your Stay</h1>
+                <p class="text-gray-600 mt-2 text-lg">Select your dates and provide your details to request a booking.</p>
+                <p class="text-xl font-semibold text-blue-600 mt-3">Price: 120 EUR per night</p>
+            </header>
+            <div class="bg-white p-6 md:p-8 rounded-xl shadow-xl max-w-4xl mx-auto my-8">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center">Choose Your Check-in & Check-out Dates</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <button id="prevMonthBtn" class="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors text-lg font-medium">&lt;</button>
+                    <h3 id="currentMonthYear" class="text-2xl font-semibold text-gray-700"></h3>
+                    <button id="nextMonthBtn" class="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors text-lg font-medium">&gt;</button>
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center mb-8 text-sm sm:text-base">
+                    <div class="font-semibold text-gray-600 py-2">Sun</div> <div class="font-semibold text-gray-600 py-2">Mon</div> <div class="font-semibold text-gray-600 py-2">Tue</div> <div class="font-semibold text-gray-600 py-2">Wed</div> <div class="font-semibold text-gray-600 py-2">Thu</div> <div class="font-semibold text-gray-600 py-2">Fri</div> <div class="font-semibold text-gray-600 py-2">Sat</div>
+                </div>
+                <div id="bookingFormContainer" class="border-t border-gray-200 pt-8">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">Your Information</h3>
+                    <div class="mb-4 text-center">
+                        <p class="text-gray-600">Selected Start Date: <span id="selectedStartDateDisplay" class="font-medium text-blue-600">Not selected</span></p>
+                        <p class="text-gray-600">Selected End Date: <span id="selectedEndDateDisplay" class="font-medium text-blue-600">Not selected</span></p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="userName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <input type="text" id="userName" name="userName" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="userEmail" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <input type="email" id="userEmail" name="userEmail" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <label for="userPhone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input type="tel" id="userPhone" name="userPhone" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button id="submitBookingBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md disabled:opacity-50 text-lg" disabled>Request to Book</button>
+                        <button id="clearSelectionBtn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md text-lg">Clear Selection</button>
+                    </div>
+                </div>
+            </div>
+             <div class="mt-6 mb-8 p-3 bg-blue-50 border border-blue-200 rounded-lg text-center max-w-4xl mx-auto">
+                <p class="text-sm text-blue-700">Your User ID (for booking): <span id="userIdDisplayBookingView" class="font-semibold">Loading...</span></p>
+            </div>
+        </div>
+
+        <div class="admin-view-section mt-12 py-8 px-4 sm:px-6 lg:px-8">
+            <h2 class="section-title text-center">Current Bookings (Admin View)</h2>
+            <div id="bookedDatesList" class="space-y-4 max-w-3xl mx-auto mt-6">
+                <p class="text-gray-500 text-center">No bookings yet, or loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <p id="modalMessageText" class="text-lg text-gray-700"></p>
+            <div id="ownerContactInfo" class="contact-info-modal" style="display: none;">
+                <h4 class="text-md font-semibold text-gray-700 mb-2">You can also contact the owner directly:</h4>
+                <p><strong>Name:</strong> Nikolai Tonev</p>
+                <p><strong>Phone (IE):</strong> +353 85 810 3131</p>
+                <p><strong>Phone (BG):</strong> +359 88 765 8222</p>
+                <p><strong>Email:</strong> tonevnikolai13@gmail.com</p>
+            </div>
+            <button id="modalCloseBtn" class="modal-close-button">OK</button>
+        </div>
+    </div>
+
+    <div id="lightboxModal" class="lightbox-modal">
+        <button id="lightboxClose" class="lightbox-close-button">&times;</button>
+        <span id="lightboxPrev" class="lightbox-nav lightbox-prev">&lsaquo;</span>
+        <div class="lightbox-content">
+            <img src="" id="lightboxImg" class="lightbox-image" alt="Enlarged apartment view">
+        </div>
+        <span id="lightboxNext" class="lightbox-nav lightbox-next">&rsaquo;</span>
+    </div>
+
+
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { 
+            apiKey: "YOUR_API_KEY_FALLBACK",
+            authDomain: "YOUR_AUTH_DOMAIN_FALLBACK",
+            projectId: "YOUR_PROJECT_ID_FALLBACK", // Important for local testing if __firebase_config is not set
+            storageBucket: "YOUR_STORAGE_BUCKET_FALLBACK",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID_FALLBACK",
+            appId: "YOUR_APP_ID_FALLBACK"
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId || 'default-apartment-rental'; // Use projectId if appId isn't in fallback
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        setLogLevel('debug');
+
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let selectedStartDate = null;
+        let selectedEndDate = null;
+        let bookings = [];
+        let userId = null;
+        let isAuthReady = false;
+
+        const apartmentView = document.getElementById('apartmentView');
+        const bookingView = document.getElementById('bookingView');
+        const goToBookingBtnHero = document.getElementById('goToBookingBtnHero'); 
+        const backToDetailsBtn = document.getElementById('backToDetailsBtn');
+        const calendarGrid = document.getElementById('calendarGrid');
+        const currentMonthYearDisplay = document.getElementById('currentMonthYear');
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        const selectedStartDateDisplay = document.getElementById('selectedStartDateDisplay');
+        const selectedEndDateDisplay = document.getElementById('selectedEndDateDisplay');
+        const userNameInput = document.getElementById('userName');
+        const userEmailInput = document.getElementById('userEmail');
+        const userPhoneInput = document.getElementById('userPhone'); 
+        const submitBookingBtn = document.getElementById('submitBookingBtn');
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+        const bookedDatesList = document.getElementById('bookedDatesList');
+        const userIdDisplayApartmentView = document.getElementById('userIdDisplayApartmentView');
+        const userIdDisplayBookingView = document.getElementById('userIdDisplayBookingView');
+        const messageModal = document.getElementById('messageModal');
+        const modalMessageText = document.getElementById('modalMessageText');
+        const ownerContactInfoModal = document.getElementById('ownerContactInfo'); 
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        const apartmentDescriptionEl = document.getElementById('apartmentDescription');
+        const apartmentFeaturesEl = document.getElementById('apartmentFeatures');
+
+        const lightboxModal = document.getElementById('lightboxModal');
+        const lightboxImg = document.getElementById('lightboxImg');
+        const lightboxCloseBtn = document.getElementById('lightboxClose');
+        const lightboxPrevBtn = document.getElementById('lightboxPrev');
+        const lightboxNextBtn = document.getElementById('lightboxNext');
+        const photoGalleryGrid = document.getElementById('photoGalleryGrid');
+        
+        let galleryImageSources = [];
+        let currentLightboxIndex = 0;
+
+        const featureIcons = {
+            "1 Bedroom": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10v11h6M3 10l6-6m0 17H9m12-7V3H9v11h12zm-9 7h6m-6 0H9m0 0v-3a3 3 0 013-3h6a3 3 0 013 3v3m-9 7h6" /></svg>`,
+            "Living Room": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`,
+            "Flat-screen TV": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`,
+            "Equipped Kitchen (Microwave, Fridge)": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7.014A7.987 7.987 0 0117.657 18.657z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 11.121A3 3 0 1012.015 7.843L11 10H9c0 .707.293 1.372.768 1.85L9.88 11.12z" /></svg>`,
+            "1 Bathroom with Bath": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v11.494m0 0a8.485 8.485 0 0011.416-8.447A8.485 8.485 0 0012 6.253v11.494zm0 0A8.485 8.485 0 01.584 9.3A8.485 8.485 0 0112 6.253v11.494z" /></svg>`,
+            "Terrace with City Views": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>`,
+            "Air Conditioning": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
+            "Balcony": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 16H8M12 12H8M16 8H8" /></svg>`,
+            "Free Private Parking": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>`,
+            "Seasonal Outdoor Pool": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h10a2 2 0 002-2v-1a2 2 0 012-2h1.945M7.732 4.5A2.002 2.002 0 019.75 3h4.5a2.002 2.002 0 012.018 1.5M15 11V3M9 11V3m0 0a2.5 2.5 0 100 5 2.5 2.5 0 000-5zm6 0a2.5 2.5 0 100 5 2.5 2.5 0 000-5z" /></svg>`,
+            "Family Rooms": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`,
+            "Beachfront (\"On the front line\")": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>`,
+            "24-hour Reception": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+            "Elevator": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" transform="rotate(180 12 12)" /></svg>`, 
+            "Housekeeping available": `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>`
+        };
+
+        function populateFeatures() {
+            if (!apartmentFeaturesEl) return;
+            apartmentFeaturesEl.innerHTML = ''; 
+            const coreFeatures = [ 
+                "1 Bedroom", "Living Room", "Flat-screen TV", "Equipped Kitchen (Microwave, Fridge)",
+                "1 Bathroom with Bath", "Terrace with City Views", "Air Conditioning", "Balcony",
+                "Free Private Parking", "Seasonal Outdoor Pool", "Family Rooms", "Beachfront (\"On the front line\")",
+                "24-hour Reception", "Elevator", "Housekeeping available"
+            ];
+            coreFeatures.forEach(featureText => {
+                const li = document.createElement('li');
+                li.classList.add('feature-item');
+                const iconHTML = featureIcons[featureText] || `<svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" /></svg>`; 
+                li.innerHTML = `${iconHTML}<span>${featureText}</span>`;
+                apartmentFeaturesEl.appendChild(li);
+            });
+        }
+
+        // --- Lightbox Functionality ---
+        function updateLightboxNav() {
+            if (!galleryImageSources.length) return; // Guard against empty gallery
+            lightboxPrevBtn.classList.toggle('disabled', currentLightboxIndex === 0);
+            lightboxNextBtn.classList.toggle('disabled', currentLightboxIndex === galleryImageSources.length - 1);
+        }
+
+        function openLightbox(clickedImgSrc) {
+            // Populate galleryImageSources if not already done or if gallery can change
+            if (galleryImageSources.length === 0 && photoGalleryGrid) {
+                 galleryImageSources = Array.from(photoGalleryGrid.querySelectorAll('.gallery-image')).map(img => img.src);
+            }
+            if (!galleryImageSources.length) return; // No images in gallery
+
+            currentLightboxIndex = galleryImageSources.indexOf(clickedImgSrc);
+            if (currentLightboxIndex === -1) currentLightboxIndex = 0; // Fallback if src not found (should not happen)
+            
+            lightboxImg.src = galleryImageSources[currentLightboxIndex];
+            lightboxModal.classList.add('active');
+            document.body.style.overflow = 'hidden'; 
+            updateLightboxNav();
+        }
+
+        function closeLightbox() {
+            lightboxModal.classList.remove('active');
+            document.body.style.overflow = ''; 
+        }
+        
+        function showPrevImage() {
+            if (currentLightboxIndex > 0) {
+                currentLightboxIndex--;
+                lightboxImg.src = galleryImageSources[currentLightboxIndex];
+                updateLightboxNav();
+            }
+        }
+
+        function showNextImage() {
+            if (currentLightboxIndex < galleryImageSources.length - 1) {
+                currentLightboxIndex++;
+                lightboxImg.src = galleryImageSources[currentLightboxIndex];
+                updateLightboxNav();
+            }
+        }
+
+        if (photoGalleryGrid) {
+            // Collect image sources on load for lightbox navigation
+            galleryImageSources = Array.from(photoGalleryGrid.querySelectorAll('.gallery-image')).map(img => img.src);
+
+            photoGalleryGrid.addEventListener('click', function(e) {
+                if (e.target.classList.contains('gallery-image')) {
+                    openLightbox(e.target.src);
+                }
+            });
+        }
+        
+        if(lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+        if(lightboxPrevBtn) lightboxPrevBtn.addEventListener('click', showPrevImage);
+        if(lightboxNextBtn) lightboxNextBtn.addEventListener('click', showNextImage);
+
+        if(lightboxModal) {
+            lightboxModal.addEventListener('click', (e) => {
+                if (e.target === lightboxModal) { 
+                    closeLightbox();
+                }
+            });
+        }
+        document.addEventListener('keydown', (e) => {
+            if (lightboxModal.classList.contains('active')) {
+                if (e.key === "Escape") closeLightbox();
+                if (e.key === "ArrowLeft" && !lightboxPrevBtn.classList.contains('disabled')) showPrevImage();
+                if (e.key === "ArrowRight" && !lightboxNextBtn.classList.contains('disabled')) showNextImage();
+            }
+        });
+
+
+        function showApartmentView() { apartmentView.classList.add('active'); bookingView.classList.remove('active'); window.scrollTo(0, 0); }
+        function showBookingView() { apartmentView.classList.remove('active'); bookingView.classList.add('active'); renderCalendar(); window.scrollTo(0, 0); }
+        goToBookingBtnHero.addEventListener('click', showBookingView); 
+        backToDetailsBtn.addEventListener('click', showApartmentView);
+        
+        function formatDate(date) { if (!date) return 'Not selected'; return date.toLocaleDateString('en-CA');}
+        
+        function showModal(message, showOwnerInfo = false) {
+            modalMessageText.textContent = message;
+            if (showOwnerInfo) {
+                ownerContactInfoModal.style.display = 'block';
+            } else {
+                ownerContactInfoModal.style.display = 'none';
+            }
+            messageModal.style.display = 'block';
+        }
+        modalCloseBtn.onclick = () => { messageModal.style.display = 'none'; };
+        window.onclick = (event) => { 
+            if (event.target == messageModal) messageModal.style.display = 'none';
+        };
+
+        function renderCalendar() { 
+            calendarGrid.innerHTML = `<div class="font-semibold text-gray-500 py-2 px-1">Sun</div> <div class="font-semibold text-gray-500 py-2 px-1">Mon</div> <div class="font-semibold text-gray-500 py-2 px-1">Tue</div> <div class="font-semibold text-gray-500 py-2 px-1">Wed</div> <div class="font-semibold text-gray-500 py-2 px-1">Thu</div> <div class="font-semibold text-gray-500 py-2 px-1">Fri</div> <div class="font-semibold text-gray-500 py-2 px-1">Sat</div>`;
+            currentMonthYearDisplay.textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const today = new Date(); today.setHours(0,0,0,0);
+
+            for (let i = 0; i < firstDayOfMonth; i++) calendarGrid.appendChild(document.createElement('div'));
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.textContent = day;
+                dayCell.classList.add('calendar-day', 'py-3', 'px-1', 'border', 'border-gray-200', 'rounded-lg', 'cursor-pointer', 'flex', 'items-center', 'justify-center', 'hover:bg-gray-100');
+                const currentDate = new Date(currentYear, currentMonth, day); currentDate.setHours(0,0,0,0);
+
+                if (currentDate < today) dayCell.classList.add('disabled', 'bg-gray-50'); 
+                else dayCell.addEventListener('click', () => handleDateClick(currentDate));
+                
+                if (currentDate.getTime() === today.getTime()) dayCell.classList.add('today');
+
+                const isBooked = bookings.some(booking => {
+                    const bookingStart = booking.startDate.toDate(); bookingStart.setHours(0,0,0,0);
+                    const bookingEnd = booking.endDate.toDate(); bookingEnd.setHours(0,0,0,0);
+                    return currentDate >= bookingStart && currentDate <= bookingEnd;
+                });
+                if (isBooked) { dayCell.classList.add('booked'); dayCell.classList.remove('cursor-pointer','hover:bg-gray-100'); }
+
+                if (selectedStartDate && selectedEndDate) { if (currentDate >= selectedStartDate && currentDate <= selectedEndDate) dayCell.classList.add('selected'); }
+                else if (selectedStartDate && currentDate.getTime() === selectedStartDate.getTime()) dayCell.classList.add('selected');
+                
+                calendarGrid.appendChild(dayCell);
+            }
+            updateBookingButtonState();
+        }
+
+        function handleDateClick(date) { 
+            const isBooked = bookings.some(booking => { 
+                const bookingStart = booking.startDate.toDate(); bookingStart.setHours(0,0,0,0);
+                const bookingEnd = booking.endDate.toDate(); bookingEnd.setHours(0,0,0,0);
+                return date >= bookingStart && date <= bookingEnd;
+            });
+            if (isBooked) { showModal("This date is already booked."); return; }
+            const today = new Date(); today.setHours(0,0,0,0);
+            if (date < today) { showModal("Cannot select past dates."); return; }
+
+            if (!selectedStartDate || (selectedStartDate && selectedEndDate)) { selectedStartDate = date; selectedEndDate = null; }
+            else if (date < selectedStartDate) { selectedStartDate = date; } 
+            else if (date.getTime() === selectedStartDate.getTime()) { selectedStartDate = null; selectedEndDate = null; } 
+            else { selectedEndDate = date; if (isRangeConflicting(selectedStartDate, selectedEndDate)) { showModal("Your selected range includes booked dates. Please choose a different range."); selectedStartDate = null; selectedEndDate = null; } }
+            updateSelectedDateDisplays(); renderCalendar();
+        }
+
+        function isRangeConflicting(start, end) { 
+            if (!start || !end) return false;
+            const rangeStart = start < end ? new Date(start) : new Date(end); rangeStart.setHours(0,0,0,0);
+            const rangeEnd = start < end ? new Date(end) : new Date(start); rangeEnd.setHours(0,0,0,0);
+            for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+                const currentDateIter = new Date(d); currentDateIter.setHours(0,0,0,0);
+                if (bookings.some(booking => { 
+                    const bookingStart = booking.startDate.toDate(); bookingStart.setHours(0,0,0,0);
+                    const bookingEnd = booking.endDate.toDate(); bookingEnd.setHours(0,0,0,0);
+                    return currentDateIter >= bookingStart && currentDateIter <= bookingEnd;
+                })) return true;
+            } return false;
+        }
+
+        function updateSelectedDateDisplays() { 
+            selectedStartDateDisplay.textContent = formatDate(selectedStartDate);
+            selectedEndDateDisplay.textContent = formatDate(selectedEndDate);
+            const activeClass = ['text-blue-600', 'font-semibold']; 
+            const inactiveClass = ['text-gray-500'];
+            selectedStartDateDisplay.classList.toggle(activeClass[0], !!selectedStartDate);
+            selectedStartDateDisplay.classList.toggle(activeClass[1], !!selectedStartDate);
+            selectedStartDateDisplay.classList.toggle(inactiveClass[0], !selectedStartDate);
+            selectedEndDateDisplay.classList.toggle(activeClass[0], !!selectedEndDate);
+            selectedEndDateDisplay.classList.toggle(activeClass[1], !!selectedEndDate);
+            selectedEndDateDisplay.classList.toggle(inactiveClass[0], !selectedEndDate);
+            if (!selectedEndDate && selectedStartDate) selectedEndDateDisplay.textContent = 'Select Check-out Date'; 
+            else if (!selectedStartDate) selectedEndDateDisplay.textContent = 'Not selected';
+            updateBookingButtonState();
+        }
+        function updateBookingButtonState() { 
+            submitBookingBtn.disabled = !(selectedStartDate && selectedEndDate && userNameInput.value.trim() && userEmailInput.value.trim() && userPhoneInput.value.trim());
+        }
+        userNameInput.addEventListener('input', updateBookingButtonState);
+        userEmailInput.addEventListener('input', updateBookingButtonState);
+        userPhoneInput.addEventListener('input', updateBookingButtonState); 
+        prevMonthBtn.addEventListener('click', () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); });
+        nextMonthBtn.addEventListener('click', () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); });
+        clearSelectionBtn.addEventListener('click', () => { selectedStartDate = null; selectedEndDate = null; updateSelectedDateDisplays(); renderCalendar(); });
+
+        async function submitBooking() { 
+            if (!isAuthReady || !userId) { showModal("Authentication not ready. Please try again shortly."); return; }
+            if (!selectedStartDate || !selectedEndDate) { showModal("Please select both a start and end date."); return; }
+            if (selectedEndDate < selectedStartDate) { showModal("End date cannot be before start date."); return; }
+            const name = userNameInput.value.trim(); 
+            const email = userEmailInput.value.trim();
+            const phone = userPhoneInput.value.trim(); 
+
+            if (!name || !email || !phone) { 
+                showModal("Please enter your name, email, and phone number."); return; 
+            }
+            if (!/^\S+@\S+\.\S+$/.test(email)) { showModal("Please enter a valid email address."); return; }
+            if (!/^\+?[0-9\s\-()]{7,20}$/.test(phone)) {
+                showModal("Please enter a valid phone number."); return;
+            }
+
+            if (isRangeConflicting(selectedStartDate, selectedEndDate)) { showModal("The selected dates conflict with an existing booking. Please choose different dates."); selectedStartDate = null; selectedEndDate = null; updateSelectedDateDisplays(); renderCalendar(); return; }
+            
+            submitBookingBtn.disabled = true; submitBookingBtn.textContent = "Processing...";
+            try {
+                const bookingsCollectionPath = `/artifacts/${appId}/public/data/bookings`;
+                await addDoc(collection(db, bookingsCollectionPath), { 
+                    userName: name, 
+                    userEmail: email, 
+                    userPhone: phone, 
+                    startDate: Timestamp.fromDate(selectedStartDate), 
+                    endDate: Timestamp.fromDate(selectedEndDate), 
+                    requesterId: userId, 
+                    status: "pending", 
+                    createdAt: serverTimestamp() 
+                });
+                showModal("Booking request sent successfully! The owner will contact you to confirm.", true); 
+                userNameInput.value = ''; userEmailInput.value = ''; userPhoneInput.value = '';
+                selectedStartDate = null; selectedEndDate = null;
+                updateSelectedDateDisplays();
+                showApartmentView(); 
+            } catch (error) { console.error("Error adding booking: ", error); showModal(`Failed to send booking request: ${error.message}. Please try again.`);
+            } finally { submitBookingBtn.disabled = false; submitBookingBtn.textContent = "Request to Book"; updateBookingButtonState(); }
+        }
+        submitBookingBtn.addEventListener('click', submitBooking);
+
+        function listenForBookings() { 
+            if (!isAuthReady) return;
+            const bookingsCollectionPath = `/artifacts/${appId}/public/data/bookings`;
+            const q = query(collection(db, bookingsCollectionPath));
+            onSnapshot(q, (snapshot) => {
+                if (!isAuthReady) return; bookings = [];
+                snapshot.forEach((doc) => bookings.push({ id: doc.id, ...doc.data() }));
+                bookings.sort((a, b) => (a.startDate.toDate ? a.startDate.toDate() : new Date(a.startDate.seconds * 1000)) - (b.startDate.toDate ? b.startDate.toDate() : new Date(b.startDate.seconds * 1000)));
+                if (bookingView.classList.contains('active')) renderCalendar(); 
+                renderBookedDatesList();
+            }, (error) => { console.error("Error fetching bookings: ", error); bookedDatesList.innerHTML = `<p class="text-red-500 text-center">Error loading bookings: ${error.message}</p>`; });
+        }
+        function renderBookedDatesList() { 
+            if (bookings.length === 0) { bookedDatesList.innerHTML = '<p class="text-gray-500 text-center">No current bookings.</p>'; return; }
+            bookedDatesList.innerHTML = bookings.map(booking => {
+                const startDateObj = booking.startDate && typeof booking.startDate.toDate === 'function' ? booking.startDate.toDate() : (booking.startDate && booking.startDate.seconds ? new Date(booking.startDate.seconds * 1000) : new Date());
+                const endDateObj = booking.endDate && typeof booking.endDate.toDate === 'function' ? booking.endDate.toDate() : (booking.endDate && booking.endDate.seconds ? new Date(booking.endDate.seconds * 1000) : new Date());
+                const startDateStr = formatDate(startDateObj); const endDateStr = formatDate(endDateObj);
+                return `<div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow"><p class="font-medium text-gray-800">Booked: <span class="text-blue-600">${startDateStr}</span> to <span class="text-blue-600">${endDateStr}</span></p><p class="text-sm text-gray-600">By: ${booking.userName} (${booking.userEmail}) ${booking.userPhone ? ' Ph: ' + booking.userPhone : ''}</p><p class="text-xs text-gray-500 mt-1">Status: <span class="font-semibold ${booking.status === 'pending' ? 'text-yellow-600' : 'text-green-600'}">${booking.status || 'Confirmed'}</span> (Req. ID: ${booking.requesterId ? booking.requesterId.substring(0,6) : 'N/A'}...)</p></div>`;
+            }).join('');
+        }
+
+        onAuthStateChanged(auth, async (user) => { 
+            if (user) {
+                userId = user.uid; isAuthReady = true;
+                userIdDisplayApartmentView.textContent = userId; 
+                userIdDisplayBookingView.textContent = userId; 
+                listenForBookings();
+            } else {
+                userId = null; isAuthReady = false;
+                userIdDisplayApartmentView.textContent = "Not authenticated";
+                userIdDisplayBookingView.textContent = "Not authenticated";
+                bookings = [];
+                if (bookingView.classList.contains('active')) renderCalendar();
+                renderBookedDatesList();
+            }
+        });
+        async function initializeAuth() { 
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Firebase Authentication Error:", error);
+                userIdDisplayApartmentView.textContent = "Auth Error"; userIdDisplayBookingView.textContent = "Auth Error";
+                showModal(`Authentication failed: ${error.message}. Some features might not work.`);
+                if (!auth.currentUser) try { await signInAnonymously(auth); } catch (anonError) { console.error("Fallback anonymous sign-in also failed:", anonError); showModal(`Critical authentication failure: ${anonError.message}.`); }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAuth();
+            showApartmentView(); 
+            populateFeatures(); 
+            const fullDescription = `Enjoy a memorable stay at VP Peter House, a spacious aparthotel offering stunning city views from its terrace. This beachfront property in Sunny Beach provides easy access to the shore, along with a seasonal outdoor swimming pool and air conditioning for your comfort. The apartment features one bedroom, a living room, a flat-screen TV, and a fully equipped kitchen with a microwave and fridge. Relax in the bathroom which includes a bath. Benefit from free private parking, a 24-hour front desk, and a lift. Families will appreciate the indoor play area, outdoor play equipment, and baby safety gate. A café and mini-market are also conveniently located on-site. Explore nearby attractions like Action Aquapark (1.3 km) or take a day trip to the Aviation Museum (28 km). Burgas Airport is 30 km away.`;
+            if (apartmentDescriptionEl) { 
+                 apartmentDescriptionEl.textContent = fullDescription;
+            }
+        });
+    </script>
+</body>
+</html>

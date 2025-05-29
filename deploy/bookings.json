@@ -1,0 +1,9 @@
+{
+  "bookedDates": [
+    {
+      "startDate": "2025-06-01",
+      "endDate": "2025-06-05",
+      "bookedBy": "Example Booking"
+    }
+  ]
+}
